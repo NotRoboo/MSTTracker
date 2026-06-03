@@ -73,9 +73,7 @@
     gap: 24px;
   }
 
-  .stat {
-    text-align: right;
-  }
+  .stat { text-align: right; }
 
   .stat-val {
     font-family: 'Share Tech Mono', monospace;
@@ -99,7 +97,7 @@
     position: relative;
     z-index: 1;
     padding: 32px 40px;
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 
@@ -129,7 +127,6 @@
   }
 
   .refresh-btn.spinning .spin-icon { display: inline-block; animation: spin .7s linear infinite; }
-
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .last-update {
@@ -196,6 +193,12 @@
 
   .td-username.offline { color: var(--muted); }
 
+  .td-rank {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .82rem;
+    white-space: nowrap;
+  }
+
   .status-pill {
     display: inline-flex;
     align-items: center;
@@ -214,12 +217,12 @@
   }
 
   .pill-mst    { background: rgba(74,222,128,.12); color: var(--accent);  }
-  .pill-mst    .dot { background: var(--accent);  box-shadow: 0 0 6px var(--accent); animation: pulse 1.8s ease-in-out infinite; }
+  .pill-mst    .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 1.8s ease-in-out infinite; }
   .pill-lobby  { background: rgba(96,165,250,.12); color: var(--lobby);   }
   .pill-lobby  .dot { background: var(--lobby); }
   .pill-offline{ background: rgba(107,114,128,.1); color: var(--muted);   }
   .pill-offline .dot { background: var(--muted); }
-  .pill-queue  { background: rgba(251,191,36,.1);  color: var(--gold);   }
+  .pill-queue  { background: rgba(251,191,36,.1);  color: var(--gold);    }
   .pill-queue  .dot { background: var(--gold); }
   .pill-unknown{ background: rgba(107,114,128,.1); color: var(--muted);   }
   .pill-unknown .dot { background: var(--muted); }
@@ -267,69 +270,19 @@
 
   .error-bar.visible { display: block; }
 
-  .mst-playerlist-panel {
-  margin-top: 32px;
-  border: 1px solid var(--border);
-  background: rgba(19,23,19,.7);
-  padding: 18px;
-}
-
-.mst-playerlist-title {
-  font-family: 'Share Tech Mono', monospace;
-  color: var(--accent);
-  font-size: .9rem;
-  letter-spacing: .1em;
-  margin-bottom: 14px;
-}
-
-.mst-playerlist {
-  display: grid;
-  gap: 8px;
-}
-
-.mst-player {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: .82rem;
-  border-bottom: 1px solid rgba(42,58,42,.45);
-  padding: 7px 0;
-}
-
-.mst-player.used-mod .mst-name {
-  color: var(--accent);
-  text-shadow: 0 0 8px rgba(74,222,128,.35);
-}
-
-.rank {
-  color: var(--text-dim);
-}
-
-.hypixel-rank {
-  color: var(--lobby);
-}
-
-.mst-rank {
-  color: var(--gold);
-}
-
-.mst-name {
-  color: var(--text);
-}
-
-.used-mod-badge {
-  color: var(--accent2);
-  font-size: .7rem;
-  margin-left: auto;
-}
+  .mod-badge {
+    color: var(--accent2);
+    font-size: .7rem;
+    margin-left: 6px;
+    opacity: .7;
+  }
 
   @media (max-width: 600px) {
     header { padding: 20px; flex-wrap: wrap; }
     main   { padding: 20px; }
     .header-stats { gap: 16px; }
     #filter { width: 100%; }
-    .td-first, .td-duration { display: none; }
+    .td-first, .td-duration, .td-rank { display: none; }
   }
 </style>
 </head>
@@ -361,7 +314,7 @@
 </header>
 
 <main>
-  <div class="error-bar" id="error-bar">Could not reach tracker server. Check your API_URL configuration.</div>
+  <div class="error-bar" id="error-bar">Could not reach tracker server.</div>
 
   <div class="toolbar">
     <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><span class="spin-icon">&#x21BB;</span> REFRESH</button>
@@ -373,8 +326,9 @@
     <thead>
       <tr>
         <th>Player</th>
+        <th>Rank</th>
         <th>Status</th>
-        <th>Time in Current Status</th>
+        <th>Time in Status</th>
         <th>First Seen</th>
       </tr>
     </thead>
@@ -385,22 +339,60 @@
     <div class="big">⛏</div>
     No players found.
   </div>
-
-  <div class="mst-playerlist-panel">
-  <div class="mst-playerlist-title">MST PLAYER LIST</div>
-  <div class="mst-playerlist" id="mst-playerlist"></div>
-</div>
 </main>
 
 <script>
-  // ─── CONFIGURE THIS ───────────────────────────────────────────────────────────
-  const API_URL = "";  // same server, no URL needed
-  // ─────────────────────────────────────────────────────────────────────────────
-
+  const API_URL = "";
   const REFRESH_INTERVAL_MS = 30000;
-
   let allPlayers = [];
-  let mstPlayerList = [];
+
+  // Minecraft §-code → CSS colour
+  const MC_COLORS = {
+    "0": "#000000", "1": "#0000AA", "2": "#00AA00", "3": "#00AAAA",
+    "4": "#AA0000", "5": "#AA00AA", "6": "#FFAA00", "7": "#AAAAAA",
+    "8": "#555555", "9": "#5555FF", "a": "#55FF55", "b": "#55FFFF",
+    "c": "#FF5555", "d": "#FF55FF", "e": "#FFFF55", "f": "#FFFFFF",
+  };
+
+  function mcToHtml(s) {
+    if (!s) return "";
+    const parts = s.split(/§([0-9a-fk-or])/i);
+    let html = "";
+    let currentColor = null;
+
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) {
+        const text = escHtml(parts[i]);
+        html += currentColor
+          ? `<span style="color:${currentColor}">${text}</span>`
+          : text;
+      } else {
+        const code = parts[i].toLowerCase();
+        if (code === "r") { currentColor = null; }
+        else if (MC_COLORS[code]) { currentColor = MC_COLORS[code]; }
+      }
+    }
+    return html;
+  }
+
+  // Fallback colour for ranks that arrive without §-codes (looked up from rank cache)
+  function rankFallbackColor(mstRank) {
+    if (!mstRank) return null;
+    const r = mstRank.replace(/[\[\]§.]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+    if (r === "owner" || r === "manager" || r === "admn" || r === "admin") return "#8B0000";
+    if (r === "dev" || r === "developer")    return "#FF5555";
+    if (r === "mod" || r === "moderator")    return "#AA00FF";
+    if (r === "build" || r === "builder")    return "#FFFF55";
+    return null;
+  }
+
+  function renderRank(mstRank) {
+    if (!mstRank) return `<span style="opacity:.3">—</span>`;
+    if (mstRank.includes("§")) return mcToHtml(mstRank);
+    const fallback = rankFallbackColor(mstRank);
+    const display = escHtml(mstRank);
+    return fallback ? `<span style="color:${fallback}">${display}</span>` : display;
+  }
 
   function formatDuration(ms) {
     if (ms < 0) ms = 0;
@@ -421,10 +413,10 @@
 
   function statusPill(status) {
     const map = {
-      mst:     { cls: "pill-mst",     label: "ON MST"  },
-      lobby:   { cls: "pill-lobby",   label: "LOBBY"   },
+      mst:     { cls: "pill-mst",     label: "ON MST"   },
+      lobby:   { cls: "pill-lobby",   label: "LOBBY"    },
       queue:   { cls: "pill-queue",   label: "IN QUEUE" },
-      offline: { cls: "pill-offline", label: "OFFLINE" },
+      offline: { cls: "pill-offline", label: "OFFLINE"  },
     };
     const s = map[status] || { cls: "pill-unknown", label: status.toUpperCase() };
     return `<span class="status-pill ${s.cls}"><span class="dot"></span>${s.label}</span>`;
@@ -450,9 +442,11 @@
 
     tbody.innerHTML = filtered.map((p, i) => {
       const durationMs = now - p.statusSince;
-      const durationClass = p.status === "mst" ? "active" : "";
+      const durationClass = p.online && p.status === "mst" ? "active" : "";
+      const modBadge = p.usedMod ? `<span class="mod-badge">⚡</span>` : "";
       return `<tr style="animation-delay:${i * 40}ms">
-        <td><span class="td-username${p.online ? "" : " offline"}">${escHtml(p.username)}</span></td>
+        <td><span class="td-username${p.online ? "" : " offline"}">${escHtml(p.username)}${modBadge}</span></td>
+        <td class="td-rank">${renderRank(p.mstRank)}</td>
         <td>${statusPill(p.status)}</td>
         <td class="td-duration ${durationClass}">${formatDuration(durationMs)}</td>
         <td class="td-first">${formatDate(p.firstSeen)}</td>
@@ -466,41 +460,13 @@
   }
 
   function escHtml(str) {
-    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return String(str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
-
-  async function fetchMstPlayerList() {
-  const res = await fetch(`${API_URL}/mst-playerlist`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  mstPlayerList = await res.json();
-  renderMstPlayerList();
-}
-
-function renderMstPlayerList() {
-  const el = document.getElementById("mst-playerlist");
-  if (!el) return;
-
-  if (!mstPlayerList.length) {
-    el.innerHTML = `<div class="td-duration">No MST player list received yet.</div>`;
-    return;
-  }
-
-  el.innerHTML = mstPlayerList.map(p => `
-    <div class="mst-player${p.usedMod ? " used-mod" : ""}">
-      ${p.hypixelRank ? `<span class="rank hypixel-rank">${escHtml(p.hypixelRank)}</span>` : ""}
-      <span class="mst-name">${escHtml(p.username)}</span>
-      ${p.mstRank ? `<span class="rank mst-rank">${escHtml(p.mstRank)}</span>` : ""}
-      ${p.usedMod ? `<span class="used-mod-badge">⚡</span>` : ""}
-    </div>
-  `).join("");
-}
 
   async function fetchData() {
     const btn = document.getElementById("refresh-btn");
     const err = document.getElementById("error-bar");
     btn.classList.add("spinning");
-
     try {
       const res = await fetch(`${API_URL}/players`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -509,7 +475,6 @@ function renderMstPlayerList() {
       document.getElementById("last-update").textContent =
         "Updated " + new Date().toLocaleTimeString();
       renderTable();
-      await fetchMstPlayerList();
     } catch (e) {
       err.classList.add("visible");
       document.getElementById("last-update").textContent = "Failed to update";
