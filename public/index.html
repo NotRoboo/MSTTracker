@@ -92,6 +92,7 @@
 
   .stat.online .stat-val  { color: var(--accent); text-shadow: 0 0 10px rgba(74,222,128,.4); }
   .stat.lobby  .stat-val  { color: var(--lobby);  text-shadow: 0 0 10px rgba(96,165,250,.4); }
+  .stat.queue  .stat-val  { color: var(--gold);   text-shadow: 0 0 10px rgba(251,191,36,.4); }
   .stat.total  .stat-val  { color: var(--text-dim); }
 
   main {
@@ -127,7 +128,7 @@
     border-color: var(--accent);
   }
 
-  .refresh-btn.spinning { animation: spin .7s linear infinite; }
+  .refresh-btn.spinning .spin-icon { display: inline-block; animation: spin .7s linear infinite; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -218,6 +219,8 @@
   .pill-lobby  .dot { background: var(--lobby); }
   .pill-offline{ background: rgba(107,114,128,.1); color: var(--muted);   }
   .pill-offline .dot { background: var(--muted); }
+  .pill-queue  { background: rgba(251,191,36,.1);  color: var(--gold);   }
+  .pill-queue  .dot { background: var(--gold); }
   .pill-unknown{ background: rgba(107,114,128,.1); color: var(--muted);   }
   .pill-unknown .dot { background: var(--muted); }
 
@@ -285,6 +288,10 @@
       <div class="stat-val" id="cnt-mst">—</div>
       <div class="stat-label">On MST</div>
     </div>
+    <div class="stat queue">
+      <div class="stat-val" id="cnt-queue">—</div>
+      <div class="stat-label">In Queue</div>
+    </div>
     <div class="stat lobby">
       <div class="stat-val" id="cnt-lobby">—</div>
       <div class="stat-label">Lobby</div>
@@ -300,7 +307,7 @@
   <div class="error-bar" id="error-bar">Could not reach tracker server. Check your API_URL configuration.</div>
 
   <div class="toolbar">
-    <button class="refresh-btn" id="refresh-btn" onclick="fetchData()">&#x21BB; REFRESH</button>
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><span class="spin-icon">&#x21BB;</span> REFRESH</button>
     <span class="last-update" id="last-update">Fetching...</span>
     <input id="filter" type="text" placeholder="Filter players..." oninput="renderTable()">
   </div>
@@ -310,7 +317,7 @@
       <tr>
         <th>Player</th>
         <th>Status</th>
-        <th>Time in Status</th>
+        <th>Time in Current Status</th>
         <th>First Seen</th>
       </tr>
     </thead>
@@ -353,6 +360,7 @@
     const map = {
       mst:     { cls: "pill-mst",     label: "ON MST"  },
       lobby:   { cls: "pill-lobby",   label: "LOBBY"   },
+      queue:   { cls: "pill-queue",   label: "IN QUEUE" },
       offline: { cls: "pill-offline", label: "OFFLINE" },
     };
     const s = map[status] || { cls: "pill-unknown", label: status.toUpperCase() };
@@ -379,17 +387,18 @@
 
     tbody.innerHTML = filtered.map((p, i) => {
       const durationMs = now - p.statusSince;
-      const isActive   = p.online;
+      const durationClass = p.status === "mst" ? "active" : "";
       return `<tr style="animation-delay:${i * 40}ms">
         <td><span class="td-username${p.online ? "" : " offline"}">${escHtml(p.username)}</span></td>
         <td>${statusPill(p.status)}</td>
-        <td class="td-duration${isActive ? " active" : ""}">${formatDuration(durationMs)}</td>
+        <td class="td-duration ${durationClass}">${formatDuration(durationMs)}</td>
         <td class="td-first">${formatDate(p.firstSeen)}</td>
       </tr>`;
     }).join("");
 
     document.getElementById("cnt-mst").textContent   = allPlayers.filter(p => p.online && p.status === "mst").length;
     document.getElementById("cnt-lobby").textContent = allPlayers.filter(p => p.online && p.status === "lobby").length;
+    document.getElementById("cnt-queue").textContent = allPlayers.filter(p => p.online && p.status === "queue").length;
     document.getElementById("cnt-total").textContent = allPlayers.length;
   }
 
