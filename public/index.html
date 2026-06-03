@@ -267,6 +267,63 @@
 
   .error-bar.visible { display: block; }
 
+  .mst-playerlist-panel {
+  margin-top: 32px;
+  border: 1px solid var(--border);
+  background: rgba(19,23,19,.7);
+  padding: 18px;
+}
+
+.mst-playerlist-title {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--accent);
+  font-size: .9rem;
+  letter-spacing: .1em;
+  margin-bottom: 14px;
+}
+
+.mst-playerlist {
+  display: grid;
+  gap: 8px;
+}
+
+.mst-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .82rem;
+  border-bottom: 1px solid rgba(42,58,42,.45);
+  padding: 7px 0;
+}
+
+.mst-player.used-mod .mst-name {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(74,222,128,.35);
+}
+
+.rank {
+  color: var(--text-dim);
+}
+
+.hypixel-rank {
+  color: var(--lobby);
+}
+
+.mst-rank {
+  color: var(--gold);
+}
+
+.mst-name {
+  color: var(--text);
+}
+
+.used-mod-badge {
+  color: var(--accent2);
+  font-size: .7rem;
+  margin-left: auto;
+}
+
   @media (max-width: 600px) {
     header { padding: 20px; flex-wrap: wrap; }
     main   { padding: 20px; }
@@ -328,6 +385,11 @@
     <div class="big">⛏</div>
     No players found.
   </div>
+
+  <div class="mst-playerlist-panel">
+  <div class="mst-playerlist-title">MST PLAYER LIST</div>
+  <div class="mst-playerlist" id="mst-playerlist"></div>
+</div>
 </main>
 
 <script>
@@ -338,6 +400,7 @@
   const REFRESH_INTERVAL_MS = 30000;
 
   let allPlayers = [];
+  let mstPlayerList = [];
 
   function formatDuration(ms) {
     if (ms < 0) ms = 0;
@@ -406,6 +469,33 @@
     return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
+  async function fetchMstPlayerList() {
+  const res = await fetch(`${API_URL}/mst-playerlist`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  mstPlayerList = await res.json();
+  renderMstPlayerList();
+}
+
+function renderMstPlayerList() {
+  const el = document.getElementById("mst-playerlist");
+  if (!el) return;
+
+  if (!mstPlayerList.length) {
+    el.innerHTML = `<div class="td-duration">No MST player list received yet.</div>`;
+    return;
+  }
+
+  el.innerHTML = mstPlayerList.map(p => `
+    <div class="mst-player${p.usedMod ? " used-mod" : ""}">
+      ${p.hypixelRank ? `<span class="rank hypixel-rank">${escHtml(p.hypixelRank)}</span>` : ""}
+      <span class="mst-name">${escHtml(p.username)}</span>
+      ${p.mstRank ? `<span class="rank mst-rank">${escHtml(p.mstRank)}</span>` : ""}
+      ${p.usedMod ? `<span class="used-mod-badge">⚡</span>` : ""}
+    </div>
+  `).join("");
+}
+
   async function fetchData() {
     const btn = document.getElementById("refresh-btn");
     const err = document.getElementById("error-bar");
@@ -419,6 +509,7 @@
       document.getElementById("last-update").textContent =
         "Updated " + new Date().toLocaleTimeString();
       renderTable();
+      await fetchMstPlayerList();
     } catch (e) {
       err.classList.add("visible");
       document.getElementById("last-update").textContent = "Failed to update";
