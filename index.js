@@ -20,12 +20,22 @@ app.post("/ping", (req, res) => {
     const now = Date.now();
     const existing = players[username];
 
+    const normalizedStatus = ["mst", "lobby", "queue"].includes(status) ? status : "offline";
+
+    const previouslyOnline = existing
+        ? (now - existing.lastPing) < OFFLINE_THRESHOLD_MS
+        : false;
+
+    const statusChanged = !existing
+        || existing.status !== normalizedStatus
+        || !previouslyOnline;
+
     players[username] = {
         username,
-        status: status || "unknown",
+        status: normalizedStatus,
         lastPing: now,
         firstSeen: existing ? existing.firstSeen : now,
-        statusSince: existing && existing.status === status ? existing.statusSince : now,
+        statusSince: statusChanged ? now : existing.statusSince,
     };
 
     return res.json({ ok: true });
@@ -36,10 +46,13 @@ app.get("/players", (req, res) => {
 
     const result = Object.values(players).map((p) => {
         const online = now - p.lastPing < OFFLINE_THRESHOLD_MS;
+        const status = online ? p.status : "offline";
+        const statusSince = online ? p.statusSince : p.lastPing;
+
         return {
             username: p.username,
-            status: online ? p.status : "offline",
-            statusSince: online ? p.statusSince : p.lastPing,
+            status,
+            statusSince,
             firstSeen: p.firstSeen,
             lastPing: p.lastPing,
             online,
