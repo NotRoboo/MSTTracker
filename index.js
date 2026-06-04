@@ -69,6 +69,7 @@ function stripWeirdChars(str) {
 
 function normalizeRank(rank) {
     return stripCodes(rank)
+        .normalize("NFKC")
         .replace(/[\[\]]/g, "")
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "");
