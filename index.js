@@ -105,7 +105,7 @@ function rankWeight(mstRank) {
 }
 
 function extractFirstColorCode(s) {
-    const m = String(s || "").match(/§([0-9a-fA-Fk-oK-OrR])/);
+    const m = String(s || "").match(/§([0-9a-fA-Fk-oK-O])/);
     return m ? m[1].toLowerCase() : null;
 }
 
@@ -253,6 +253,22 @@ app.post("/ping", (req, res) => {
             mstPlayerList.sort(makeSort());
             mstPlayerListUpdatedAt = now;
             mstPlayerListUpdatedBy = cleanUsername;
+
+            for (const p of mstPlayerList) {
+                const uname = p.username;
+                if (!uname) continue;
+                const existingP = players[uname];
+                const wasOnlineMst = existingP
+                    && (now - existingP.lastPing) < OFFLINE_THRESHOLD_MS
+                    && existingP.status === 'mst';
+                players[uname] = {
+                    username: uname,
+                    status: 'mst',
+                    lastPing: wasOnlineMst ? existingP.lastPing : now,
+                    firstSeen: existingP ? existingP.firstSeen : now,
+                    statusSince: wasOnlineMst ? existingP.statusSince : now,
+                };
+            }
         }
     }
 
