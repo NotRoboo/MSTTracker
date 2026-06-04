@@ -175,10 +175,38 @@ function parseTabName(rawName) {
 }
 
 function extractRawSegment(raw, strippedTarget) {
-    const chars = [...strippedTarget].map(c => c.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&"));
-    const re = new RegExp("(?:§.)*" + chars.join("(?:§.)*"));
-    const m = raw.match(re);
-    return m ? m[0] : strippedTarget;
+    raw = String(raw || "");
+    strippedTarget = String(strippedTarget || "");
+
+    const target = stripCodes(strippedTarget);
+    if (!target) return "";
+
+    let plain = "";
+    const plainToRaw = [];
+
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === "§" && i + 1 < raw.length) {
+            i++;
+            continue;
+        }
+
+        plainToRaw.push(i);
+        plain += raw[i];
+    }
+
+    const startPlain = plain.indexOf(target);
+    if (startPlain < 0) return strippedTarget;
+
+    const endPlain = startPlain + target.length - 1;
+
+    let startRaw = plainToRaw[startPlain];
+    const endRaw = plainToRaw[endPlain] + 1;
+
+    while (startRaw >= 2 && raw[startRaw - 2] === "§") {
+        startRaw -= 2;
+    }
+
+    return raw.slice(startRaw, endRaw);
 }
 
 function isOnlineMst(username) {
