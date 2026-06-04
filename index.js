@@ -175,10 +175,10 @@ function parseTabName(rawName) {
 }
 
 function extractRawSegment(raw, strippedTarget) {
-    const pattern = strippedTarget.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`((?:§.)*${pattern.split("").join("(?:§.)*")})`);
+    const chars = [...strippedTarget].map(c => c.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&"));
+    const re = new RegExp("(?:§.)*" + chars.join("(?:§.)*"));
     const m = raw.match(re);
-    return m ? m[1] : strippedTarget;
+    return m ? m[0] : strippedTarget;
 }
 
 function isOnlineMst(username) {
