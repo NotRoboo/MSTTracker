@@ -444,7 +444,7 @@
       const durationMs = now - p.statusSince;
       const durationClass = p.online && p.status === "mst" ? "active" : "";
       const modBadge = p.usedMod ? `<span class="mod-badge">⚡</span>` : "";
-      return `<tr style="animation-delay:${i * 40}ms">
+      return `<tr style="animation-delay:${Math.min(i * 5, 250)}ms">
         <td><span class="td-username${p.online ? "" : " offline"}">${escHtml(p.username)}${modBadge}</span></td>
         <td class="td-rank">${renderRank(p.mstRank)}</td>
         <td>${statusPill(p.status)}</td>
